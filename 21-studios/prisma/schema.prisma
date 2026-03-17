@@ -1,0 +1,86 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Admin Users ────────────────────────────────────────
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("admin")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Galleries ──────────────────────────────────────────
+model Gallery {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  description String?
+  coverImage  String?
+  category    String   @default("General")
+  featured    Boolean  @default(false)
+  published   Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  photos      Photo[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── Photos ─────────────────────────────────────────────
+model Photo {
+  id         String   @id @default(cuid())
+  url        String
+  thumbUrl   String?
+  alt        String?
+  width      Int      @default(1200)
+  height     Int      @default(800)
+  sortOrder  Int      @default(0)
+  galleryId  String?
+  gallery    Gallery? @relation(fields: [galleryId], references: [id], onDelete: SetNull)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// ─── Photography Sessions / Packages ────────────────────
+model Session {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  description String?
+  price       String
+  duration    String?
+  includes    String   @default("[]")   // JSON array stored as string
+  coverImage  String?
+  category    String   @default("Portrait")
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── Site Content (CMS) ─────────────────────────────────
+model Content {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  type      String   @default("text")  // text | image | json
+  group     String   @default("general")
+  label     String?
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Site Settings ──────────────────────────────────────
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}
