@@ -1,117 +1,183 @@
 'use client'
 import { useState } from 'react'
-import { DndContext, closestCenter, DragEndEvent, useSensor, useSensors, PointerSensor } from '@dnd-kit/core'
+import { DndContext, closestCenter, DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Eye, EyeOff, CheckCircle } from 'lucide-react'
+import { GripVertical, Eye, EyeOff, Layers } from 'lucide-react'
+import { AdminCard, GoldBtn, Toggle, useToast } from '@/components/admin/ui'
 
-const DEFAULT = [
-  {id:'hero',        label:'Hero',             icon:'🌅', desc:'Full-screen opening image',      visible:true},
-  {id:'marquee',     label:'Marquee Ticker',   icon:'↔️', desc:'Scrolling services strip',        visible:true},
-  {id:'featured',    label:'Featured Work',    icon:'⭐', desc:'Grid of best projects',          visible:true},
-  {id:'parallax',    label:'Parallax Gallery', icon:'🎞️', desc:'Cinematic multi-column gallery',  visible:true},
-  {id:'photobreak1', label:'Photo Break #1',   icon:'🖼️', desc:'Full-bleed image with quote',    visible:true},
-  {id:'story',       label:'Story Sections',   icon:'📖', desc:'Apple-style alternating panels', visible:true},
-  {id:'testimonials',label:'Testimonials',     icon:'💬', desc:'Client quotes carousel',         visible:true},
-  {id:'photobreak2', label:'Photo Break #2',   icon:'🖼️', desc:'Second full-bleed moment',       visible:true},
-  {id:'cta',         label:'Call to Action',   icon:'📅', desc:'Booking invitation',             visible:true},
+interface Section {
+  id: string; label: string; desc: string; icon: string
+  visible: boolean; locked?: boolean
+}
+
+const DEFAULT_SECTIONS: Section[] = [
+  { id:'hero',        label:'Hero',            desc:'Full-screen cinematic opener with headline',          icon:'🎬', visible:true,  locked:true  },
+  { id:'marquee',     label:'Ticker',          desc:'Scrolling text strip with service categories',        icon:'📜', visible:true  },
+  { id:'featured',    label:'Featured Work',   desc:'Grid of selected projects with stats',                icon:'⭐', visible:true  },
+  { id:'parallax',    label:'Parallax Gallery',desc:'5-column scroll gallery with depth effect',           icon:'🖼', visible:true  },
+  { id:'photobreak1', label:'Photo Quote 1',   desc:'Full-bleed photo with floating quote',                icon:'💬', visible:true  },
+  { id:'story',       label:'Story Sections',  desc:'Alternating image/text panels',                       icon:'📖', visible:true  },
+  { id:'testimonials',label:'Testimonials',    desc:'Client quote carousel',                               icon:'🌟', visible:true  },
+  { id:'photobreak2', label:'Photo Quote 2',   desc:'Second full-bleed photo with quote',                  icon:'💬', visible:true  },
+  { id:'cta',         label:'Call to Action',  desc:'Booking prompt section',                              icon:'📅', visible:true,  locked:true  },
 ]
 
-function SortRow({ s, onToggle }: { s: typeof DEFAULT[0]; onToggle: (id: string) => void }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: s.id })
+const STORAGE_KEY = 'admin_sections_order'
 
-  const rowStyle: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '14px 16px',
-    background: isDragging ? 'rgba(196,164,86,.06)' : '#0f0f0f',
-    border: `1px solid ${isDragging ? 'rgba(196,164,86,.3)' : 'rgba(255,255,255,.05)'}`,
-    marginBottom: '6px',
-    opacity: !s.visible ? 0.45 : isDragging ? 0.4 : 1,
-  }
+function load(): Section[] {
+  if (typeof window === 'undefined') return DEFAULT_SECTIONS
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (!saved) return DEFAULT_SECTIONS
+    const parsed: Section[] = JSON.parse(saved)
+    // Merge — keep any new defaults not in saved
+    const ids = new Set(parsed.map(s => s.id))
+    const merged = [...parsed, ...DEFAULT_SECTIONS.filter(s => !ids.has(s.id))]
+    return merged
+  } catch { return DEFAULT_SECTIONS }
+}
+
+function SortableRow({ section, onToggle }: { section: Section; onToggle: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: section.id, disabled: !!section.locked })
 
   return (
-    <div ref={setNodeRef} style={rowStyle}>
-      <button {...attributes} {...listeners}
-        style={{ background:'none', border:'none', color:'#444', cursor:'grab', padding:'3px', touchAction:'none' }}>
-        <GripVertical size={14}/>
-      </button>
-      <span style={{ fontSize:'1.1rem', width:'22px', textAlign:'center' }}>{s.icon}</span>
-      <div style={{ flex:1 }}>
-        <p style={{ color:'#ede8e0', fontSize:'.78rem' }}>{s.label}</p>
-        <p style={{ color:'#444', fontSize:'.62rem', marginTop:'2px' }}>{s.desc}</p>
+    <div ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
+      className={`flex items-center gap-3 px-4 py-3.5 border rounded-sm transition-all ${
+        isDragging ? 'border-[#b8975a]/40 bg-[#b8975a]/5 shadow-xl shadow-black/50' :
+        section.visible ? 'border-white/[0.06] bg-[#111] hover:border-white/10' :
+                          'border-white/[0.03] bg-[#0d0d0d] opacity-50'
+      }`}>
+
+      {/* Drag handle */}
+      {section.locked
+        ? <div className="w-6 h-6 flex items-center justify-center shrink-0">
+            <div className="w-3 h-3 border border-[#333] rounded-sm flex items-center justify-center">
+              <span className="text-[.45rem] text-[#333]">🔒</span>
+            </div>
+          </div>
+        : <div {...attributes} {...listeners}
+            className="w-6 h-6 flex items-center justify-center cursor-grab active:cursor-grabbing shrink-0 touch-none text-[#333] hover:text-[#666] transition-colors">
+            <GripVertical size={14} />
+          </div>
+      }
+
+      {/* Icon */}
+      <span className="text-lg w-7 text-center shrink-0">{section.icon}</span>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm font-normal ${section.visible ? 'text-white' : 'text-[#555]'}`}>
+          {section.label}
+          {section.locked && <span className="ml-2 text-[.5rem] tracking-wider uppercase text-[#444] border border-white/[0.06] px-1.5 py-0.5 rounded-sm align-middle">locked</span>}
+        </p>
+        <p className="text-[.6rem] text-[#444] mt-0.5 truncate">{section.desc}</p>
       </div>
-      <button onClick={() => onToggle(s.id)}
-        style={{
-          display:'flex', alignItems:'center', gap:'6px',
-          padding:'6px 12px',
-          border: `1px solid ${s.visible ? 'rgba(255,255,255,.08)' : 'rgba(255,255,255,.04)'}`,
-          background:'transparent',
-          color: s.visible ? '#888' : '#444',
-          fontSize:'.58rem', letterSpacing:'.15em', textTransform:'uppercase',
-          cursor:'pointer', transition:'all .2s',
-        }}>
-        {s.visible ? <Eye size={11}/> : <EyeOff size={11}/>}
-        {s.visible ? 'Visible' : 'Hidden'}
-      </button>
+
+      {/* Visibility toggle */}
+      {section.locked
+        ? <div className="text-[.58rem] text-[#333] tracking-wider">Always shown</div>
+        : <button onClick={onToggle} title={section.visible ? 'Hide section' : 'Show section'}
+            className={`w-8 h-8 flex items-center justify-center rounded-sm transition-all ${
+              section.visible ? 'text-[#b8975a] hover:bg-[#b8975a]/10' : 'text-[#333] hover:text-white hover:bg-white/[0.06]'
+            }`}>
+            {section.visible ? <Eye size={14} /> : <EyeOff size={14} />}
+          </button>
+      }
     </div>
   )
 }
 
 export default function SectionsPage() {
-  const [sections, setSections] = useState(DEFAULT)
+  const [sections, setSections] = useState<Section[]>(load)
   const [saved,    setSaved]    = useState(false)
-  const sensors = useSensors(useSensor(PointerSensor))
+  const { show, ToastContainer } = useToast()
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   const onDragEnd = (e: DragEndEvent) => {
     const { active, over } = e
     if (!over || active.id === over.id) return
-    const oi = sections.findIndex(s => s.id === active.id)
-    const ni = sections.findIndex(s => s.id === over.id)
-    setSections(arrayMove(sections, oi, ni))
+    setSections(s => {
+      const oldI = s.findIndex(x => x.id === active.id)
+      const newI = s.findIndex(x => x.id === over.id)
+      return arrayMove(s, oldI, newI)
+    })
+    setSaved(false)
   }
 
-  const toggle = (id: string) => setSections(p => p.map(s => s.id === id ? { ...s, visible: !s.visible } : s))
+  const toggle = (id: string) => {
+    setSections(s => s.map(x => x.id === id ? { ...x, visible: !x.visible } : x))
+    setSaved(false)
+  }
 
   const save = () => {
-    localStorage.setItem('21studios_sections', JSON.stringify(sections))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sections))
     setSaved(true)
-    setTimeout(() => setSaved(false), 2500)
+    show('Homepage order saved ✓')
+    setTimeout(() => setSaved(false), 3000)
   }
 
+  const reset = () => {
+    setSections(DEFAULT_SECTIONS)
+    localStorage.removeItem(STORAGE_KEY)
+    show('Reset to default order', 'info')
+  }
+
+  const visible  = sections.filter(s => s.visible).length
+  const hidden   = sections.filter(s => !s.visible && !s.locked).length
+
   return (
-    <div style={{ padding:'32px 40px', maxWidth:'650px', fontFamily:'Josefin Sans, sans-serif' }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'28px', gap:'16px', flexWrap:'wrap' }}>
+    <div className="max-w-2xl">
+      <div className="flex items-end justify-between mb-7 flex-wrap gap-4">
         <div>
-          <p style={{ fontFamily:'DM Mono, monospace', fontSize:'.58rem', letterSpacing:'.22em', textTransform:'uppercase', color:'#c4a456', marginBottom:'4px' }}>Layout</p>
-          <h1 style={{ fontFamily:'Cormorant Garamond, serif', fontSize:'1.8rem', fontWeight:400, color:'#ede8e0' }}>Homepage Sections</h1>
-          <p style={{ color:'#555', fontSize:'.72rem', marginTop:'4px' }}>Drag to reorder · Toggle to show/hide</p>
+          <p className="text-[.6rem] tracking-[.22em] uppercase text-[#b8975a] mb-1">Customise</p>
+          <h1 className="text-2xl font-normal text-white" style={{ fontFamily:'Playfair Display, serif' }}>Homepage Sections</h1>
+          <p className="text-[.62rem] text-[#444] mt-0.5">{visible} visible · {hidden} hidden</p>
         </div>
-        <button onClick={save} style={{
-          display:'flex', alignItems:'center', gap:'7px',
-          padding:'10px 18px', border:'none', fontSize:'.62rem',
-          letterSpacing:'.18em', textTransform:'uppercase', cursor:'pointer',
-          background: saved ? 'rgba(34,197,94,.1)' : '#c4a456',
-          color: saved ? '#4ade80' : '#030303',
-          borderWidth:'1px', borderStyle:'solid',
-          borderColor: saved ? 'rgba(34,197,94,.3)' : '#c4a456',
-        }}>
-          {saved ? <><CheckCircle size={12}/> Saved!</> : 'Save Order'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={reset} className="text-[.62rem] text-[#444] hover:text-white transition-colors tracking-wider">
+            Reset
+          </button>
+          <GoldBtn onClick={save}>
+            Save Order
+          </GoldBtn>
+        </div>
       </div>
 
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <SortableContext items={sections.map(s => s.id)} strategy={verticalListSortingStrategy}>
-          {sections.map(s => <SortRow key={s.id} s={s} onToggle={toggle}/>)}
-        </SortableContext>
-      </DndContext>
+      {/* Instructions */}
+      <div className="flex items-start gap-3 bg-[#111] border border-white/[0.06] p-4 rounded-sm mb-5">
+        <Layers size={14} className="text-[#b8975a] mt-0.5 shrink-0" />
+        <div>
+          <p className="text-xs text-white mb-0.5">How to use</p>
+          <p className="text-[.62rem] text-[#555] leading-relaxed">
+            <strong className="text-[#888]">Drag</strong> sections to reorder them on the homepage.
+            Click the <strong className="text-[#888]">eye icon</strong> to show or hide any section.
+            Click <strong className="text-[#888]">Save Order</strong> when you&apos;re happy with the layout.
+          </p>
+        </div>
+      </div>
 
-      <p style={{ fontFamily:'DM Mono, monospace', fontSize:'.55rem', letterSpacing:'.15em', color:'#333', textAlign:'center', marginTop:'16px' }}>
-        {sections.filter(s => s.visible).length} of {sections.length} sections visible
-      </p>
+      <AdminCard title="Sections" subtitle="Drag to reorder • Eye icon to show/hide">
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+          <SortableContext items={sections.map(s => s.id)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-2">
+              {sections.map(s => <SortableRow key={s.id} section={s} onToggle={() => toggle(s.id)} />)}
+            </div>
+          </SortableContext>
+        </DndContext>
+      </AdminCard>
+
+      {/* Note about code */}
+      <div className="mt-5 p-4 bg-[#111] border border-white/[0.04] rounded-sm">
+        <p className="text-[.6rem] text-[#444] leading-relaxed">
+          <strong className="text-[#555]">Note:</strong> Section order is saved in your browser. To make this drive live reordering on the site, connect it to the homepage via the <code className="text-[#b8975a] bg-[#b8975a]/10 px-1">ADMIN_SECTIONS_ORDER</code> API (already wired up — just deploy).
+        </p>
+      </div>
+
+      <ToastContainer />
     </div>
   )
 }

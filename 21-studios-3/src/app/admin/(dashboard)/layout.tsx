@@ -3,17 +3,20 @@ import { useEffect, useState } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { LayoutDashboard, Images, FolderOpen, Camera, FileText, Settings, LogOut, Menu, X, ChevronRight, Eye, Layers, Grid } from 'lucide-react'
+import {
+  LayoutDashboard, Images, FolderOpen, Camera,
+  FileText, Settings, LogOut, Menu, X,
+  ChevronRight, Eye, Layers,
+} from 'lucide-react'
 
 const nav = [
-  { href:'/admin',             label:'Dashboard',  icon:LayoutDashboard, desc:'Overview' },
-  { href:'/admin/portfolio',   label:'Portfolio',  icon:Grid,            desc:'Photos & captions' },
-  { href:'/admin/galleries',   label:'Galleries',  icon:FolderOpen,      desc:'Collections' },
-  { href:'/admin/photos',      label:'All Photos', icon:Images,          desc:'Upload & manage' },
-  { href:'/admin/sessions',    label:'Sessions',   icon:Camera,          desc:'Packages & pricing' },
-  { href:'/admin/content',     label:'Content',    icon:FileText,        desc:'Edit site text' },
-  { href:'/admin/sections',    label:'Homepage',   icon:Layers,          desc:'Reorder sections' },
-  { href:'/admin/settings',    label:'Settings',   icon:Settings,        desc:'Logo & account' },
+  { href: '/admin',           label: 'Dashboard',  icon: LayoutDashboard, desc: 'Overview & stats' },
+  { href: '/admin/galleries', label: 'Galleries',  icon: FolderOpen,      desc: 'Manage photo collections' },
+  { href: '/admin/photos',    label: 'Photos',     icon: Images,          desc: 'Upload & organise' },
+  { href: '/admin/sessions',  label: 'Sessions',   icon: Camera,          desc: 'Packages & pricing' },
+  { href: '/admin/content',   label: 'Content',    icon: FileText,        desc: 'Edit site text' },
+  { href: '/admin/sections',  label: 'Homepage',   icon: Layers,          desc: 'Reorder sections' },
+  { href: '/admin/settings',  label: 'Settings',   icon: Settings,        desc: 'Logo & account' },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -22,105 +25,121 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
 
-  useEffect(()=>{
-    if(status==='unauthenticated') router.push('/admin/login')
-  },[status,router])
+  useEffect(() => {
+    if (status === 'unauthenticated') router.push('/admin/login')
+  }, [status, router])
 
-  if(status==='loading') return (
-    <div style={{ minHeight:'100vh', background:'#030303', display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <div style={{ width:'28px', height:'28px', border:'2px solid rgba(196,164,86,.2)', borderTopColor:'#c4a456', borderRadius:'50%', animation:'spin 1s linear infinite' }}/>
+  if (status === 'loading') return (
+    <div className="min-h-screen bg-[#080808] flex items-center justify-center">
+      <div className="w-6 h-6 border-2 border-[#b8975a]/30 border-t-[#b8975a] rounded-full animate-spin" />
     </div>
   )
-  if(!session) return null
+  if (!session) return null
 
-  const current = nav.find(n=>n.href===pathname||(n.href!=='/admin'&&pathname.startsWith(n.href)))
+  const isLogin = pathname === '/admin/login'
+  if (isLogin) return <>{children}</>
+
+  const activePage = nav.find(n => n.href === pathname || (n.href !== '/admin' && pathname.startsWith(n.href)))
 
   return (
-    <div style={{ minHeight:'100vh', background:'#080808', display:'flex', fontFamily:'Josefin Sans, sans-serif' }}>
+    <div className="min-h-screen bg-[#0d0d0d] flex" style={{ fontFamily: 'Outfit, sans-serif' }}>
 
-      {/* Sidebar */}
-      <aside style={{
-        position:'fixed', top:0, left:0, bottom:0, zIndex:50, width:'196px',
-        background:'#0a0a0a', borderRight:'1px solid rgba(255,255,255,.05)',
-        display:'flex', flexDirection:'column',
-        transform: open?'translateX(0)':'translateX(-100%)',
-        transition:'transform .3s cubic-bezier(0.16,1,0.3,1)',
-      }} className="lg:translate-x-0 lg:transform-none">
+      {/* ── Sidebar ─────────────────────────────────────── */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#0a0a0a] border-r border-white/[0.06] flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${open ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
 
         {/* Logo */}
-        <div style={{ height:'64px', display:'flex', alignItems:'center', padding:'0 16px', borderBottom:'1px solid rgba(255,255,255,.05)', gap:'10px' }}>
-          <Link href="/" style={{ display:'flex', alignItems:'center', gap:'10px', textDecoration:'none' }} onClick={()=>setOpen(false)}>
-            <div style={{ width:'28px', height:'28px', background:'#c4a456', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <span style={{ color:'#030303', fontSize:'.6rem', fontWeight:700 }}>21</span>
+        <div className="h-16 flex items-center px-5 border-b border-white/[0.06] shrink-0">
+          <Link href="/" target="_blank" className="flex items-center gap-2.5 group">
+            <div className="w-7 h-7 bg-[#b8975a] flex items-center justify-center shrink-0">
+              <span className="text-[#080808] text-[.65rem] font-bold tracking-tight">21</span>
             </div>
-            <span style={{ fontFamily:'Cormorant Garamond, serif', fontSize:'1rem', color:'#ede8e0', letterSpacing:'.1em' }}>Studios</span>
+            <span className="text-sm text-white tracking-wide" style={{ fontFamily: 'Playfair Display, serif' }}>
+              Studios
+            </span>
           </Link>
-          <span style={{ marginLeft:'auto', fontSize:'.45rem', letterSpacing:'.18em', textTransform:'uppercase', color:'#333', border:'1px solid rgba(255,255,255,.06)', padding:'2px 6px', flexShrink:0 }}>CMS</span>
+          <span className="ml-auto text-[.5rem] tracking-[.18em] uppercase text-[#444] border border-white/[0.07] px-2 py-0.5 rounded-sm">
+            CMS
+          </span>
         </div>
 
         {/* Nav */}
-        <nav style={{ flex:1, padding:'8px', overflowY:'auto', display:'flex', flexDirection:'column', gap:'2px' }}>
-          {nav.map(({href,label,icon:Icon,desc})=>{
-            const active = pathname===href||(href!=='/admin'&&pathname.startsWith(href))
+        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+          {nav.map(({ href, label, icon: Icon, desc }) => {
+            const active = pathname === href || (href !== '/admin' && pathname.startsWith(href))
             return (
-              <Link key={href} href={href} onClick={()=>setOpen(false)}
-                style={{
-                  display:'flex', alignItems:'center', gap:'10px',
-                  padding:'10px 12px', borderRadius:'2px', textDecoration:'none',
-                  background: active?'rgba(196,164,86,.1)':'transparent',
-                  transition:'all .2s',
-                }}>
-                <Icon size={14} style={{ color:active?'#c4a456':'#444', flexShrink:0 }}/>
-                <div style={{ minWidth:0 }}>
-                  <p style={{ fontSize:'.72rem', color:active?'#c4a456':'#666', lineHeight:1 }}>{label}</p>
-                  <p style={{ fontSize:'.56rem', color:active?'rgba(196,164,86,.5)':'#333', marginTop:'2px' }}>{desc}</p>
+              <Link key={href} href={href} onClick={() => setOpen(false)}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm transition-all duration-200 group relative ${
+                  active
+                    ? 'bg-[#b8975a]/10 text-[#b8975a]'
+                    : 'text-[#666] hover:text-white hover:bg-white/[0.04]'
+                }`}>
+                {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-[#b8975a] rounded-r" />}
+                <Icon size={15} className={`shrink-0 ${active ? 'text-[#b8975a]' : 'text-[#444] group-hover:text-[#888]'}`} />
+                <div className="flex-1 min-w-0">
+                  <div className="font-normal text-[.8rem]">{label}</div>
+                  <div className={`text-[.6rem] truncate mt-0.5 ${active ? 'text-[#b8975a]/60' : 'text-[#444]'}`}>{desc}</div>
                 </div>
-                {active&&<ChevronRight size={10} style={{ marginLeft:'auto', color:'rgba(196,164,86,.4)' }}/>}
+                {active && <ChevronRight size={11} className="text-[#b8975a]/50 shrink-0" />}
               </Link>
             )
           })}
         </nav>
 
-        {/* Bottom */}
-        <div style={{ padding:'8px', borderTop:'1px solid rgba(255,255,255,.05)' }}>
-          <Link href="/" target="_blank" style={{ display:'flex', alignItems:'center', gap:'8px', padding:'8px 12px', color:'#444', textDecoration:'none', fontSize:'.62rem', borderRadius:'2px', transition:'color .2s' }}>
-            <Eye size={12}/> View live site
+        {/* View site link */}
+        <div className="px-3 pb-2">
+          <Link href="/" target="_blank"
+            className="flex items-center gap-2 px-3 py-2.5 rounded-sm text-[#444] hover:text-white hover:bg-white/[0.04] transition-all text-xs group">
+            <Eye size={13} className="group-hover:text-[#b8975a] transition-colors" />
+            View live site
+            <span className="ml-auto text-[.55rem] text-[#333]">↗</span>
           </Link>
-          <button onClick={()=>signOut({callbackUrl:'/admin/login'})}
-            style={{ width:'100%', display:'flex', alignItems:'center', gap:'8px', padding:'8px 12px', background:'none', border:'none', cursor:'pointer', color:'#444', fontSize:'.62rem', borderRadius:'2px', transition:'color .2s' }}>
-            <LogOut size={12}/> Sign out
-          </button>
-          <div style={{ display:'flex', alignItems:'center', gap:'8px', padding:'10px 12px', borderTop:'1px solid rgba(255,255,255,.05)', marginTop:'4px' }}>
-            <div style={{ width:'24px', height:'24px', borderRadius:'50%', background:'rgba(196,164,86,.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <span style={{ fontSize:'.58rem', color:'#c4a456' }}>{session.user.name?.[0]}</span>
+        </div>
+
+        {/* User */}
+        <div className="p-3 border-t border-white/[0.06]">
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-sm">
+            <div className="w-7 h-7 rounded-full bg-[#b8975a]/20 border border-[#b8975a]/30 flex items-center justify-center shrink-0">
+              <span className="text-[.65rem] text-[#b8975a] font-medium">{session.user.name?.[0]?.toUpperCase()}</span>
             </div>
-            <div style={{ minWidth:0 }}>
-              <p style={{ fontSize:'.62rem', color:'#ede8e0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{session.user.name}</p>
-              <p style={{ fontSize:'.52rem', color:'#444', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{session.user.email}</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-white truncate leading-tight">{session.user.name}</p>
+              <p className="text-[.55rem] text-[#444] truncate mt-0.5">{session.user.email}</p>
             </div>
+            <button onClick={() => signOut({ callbackUrl: '/admin/login' })}
+              title="Sign out"
+              className="text-[#333] hover:text-red-400 transition-colors p-1">
+              <LogOut size={13} />
+            </button>
           </div>
         </div>
       </aside>
 
       {/* Mobile overlay */}
-      {open&&<div style={{ position:'fixed', inset:0, zIndex:40, background:'rgba(0,0,0,.75)', backdropFilter:'blur(4px)' }} onClick={()=>setOpen(false)} className="lg:hidden"/>}
+      {open && <div className="fixed inset-0 z-40 bg-black/70 lg:hidden backdrop-blur-sm" onClick={() => setOpen(false)} />}
 
-      {/* Main */}
-      <div style={{ flex:1, marginLeft:0, display:'flex', flexDirection:'column', minHeight:'100vh' }} className="lg:ml-[196px]">
-        <header style={{ height:'64px', display:'flex', alignItems:'center', padding:'0 20px', borderBottom:'1px solid rgba(255,255,255,.05)', background:'#0a0a0a', flexShrink:0 }}>
-          <button className="lg:hidden" onClick={()=>setOpen(!open)} style={{ background:'none', border:'none', cursor:'pointer', color:'#666', marginRight:'12px' }}>
-            {open?<X size={18}/>:<Menu size={18}/>}
+      {/* ── Main ─────────────────────────────────────────── */}
+      <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
+        {/* Top bar */}
+        <header className="h-14 flex items-center px-5 border-b border-white/[0.06] bg-[#0a0a0a] shrink-0 sticky top-0 z-30">
+          <button className="lg:hidden text-[#666] hover:text-white mr-4 transition-colors" onClick={() => setOpen(!open)}>
+            {open ? <X size={18} /> : <Menu size={18} />}
           </button>
           <div>
-            <p style={{ color:'#ede8e0', fontSize:'.85rem' }}>{current?.label||'Dashboard'}</p>
-            <p style={{ color:'#444', fontSize:'.58rem', marginTop:'2px' }}>{current?.desc}</p>
+            <p className="text-sm text-white font-normal leading-tight">{activePage?.label || 'Admin'}</p>
+            <p className="text-[.58rem] text-[#444] leading-tight">{activePage?.desc}</p>
           </div>
-          <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:'8px' }}>
-            <div style={{ width:'7px', height:'7px', borderRadius:'50%', background:'#4ade80' }}/>
-            <span style={{ fontSize:'.58rem', color:'#444' }}>Live</span>
+          <div className="ml-auto flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-1.5 text-[.6rem] text-[#444] border border-white/[0.06] px-2.5 py-1.5 rounded-sm">
+              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+              Live
+            </div>
           </div>
         </header>
-        <main style={{ flex:1, overflow:'auto' }}>{children}</main>
+
+        {/* Page */}
+        <main className="flex-1 p-5 md:p-8 overflow-auto">
+          {children}
+        </main>
       </div>
     </div>
   )
